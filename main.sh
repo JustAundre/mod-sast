@@ -2,12 +2,16 @@
 #
 # Environment Setup
 #
-# Create and echo the random file path for the decompilation directory
+cd "$(dirname "${0}")" || exit 1
+[[ -d "./lib" ]] || exit 2
+for function in "./lib/"*; do
+	source "${function}"
+done
 if ! decompilation_dir="$(mktemp -d /tmp/decompilation-XXXXXX)"; then
-	printf 'E: Failed to create temporary data directory for decompilation of data @ "%s".' "$(date)"
+	log e "${0@Q}: Failed to create temporary data directory."
 	exit 1
 fi
-printf 'Path of temporary decompilation data: %s' "${decompilation_dir}"
+log i "Path of temporary decompilation data: ${decompilation_dir}"
 #
 # Set auto-cleanup on exit.
 trap 'rm -rf "${decompilation_dir}"' EXIT
@@ -27,7 +31,7 @@ pattern_chk() {
 		args+=(-e "${arg}")
 	done
 	mapfile -t "${link_name}" < <(rg -i "${args[@]}" --trim | sort -u)
-	echo "JAR references ${readable_name} ${#link[@]} times."
+	log i "JAR references ${readable_name@Q} ${#link[@]} times."
 	[[ ${#link[@]} -gt 0 ]] && printf '%s\n' "${link[@]}"
 	echo
 }
@@ -62,21 +66,21 @@ calc_score() {
 		if ((counter > max)); then
 			# Send score breakdown with notice of score being rounded down
 			capped=true
-			printf 'Points from %s: %s/%s (rounded down from %s)\n' "${readable_name}" "${max}" "${max}" "${counter}"
+			log i "Points from ${readable_name}: ${max}/${max} (rounded down from ${counter})"
 			counter="${max}"
 			break
 		fi
 		if (("${#link[@]}" > 0 && quad_mod < 0 && counter < min)); then
 			# Ditto but rounded up
 			capped=true
-			printf 'Points from %s: %s/%s (rounded up from %s)\n' "${readable_name}" "${min}" "${max}" "${counter}"
+			log i "Points from ${readable_name}: ${min}/${max} (rounded up from ${counter})"
 			counter="${min}"
 			break
 		fi
 	done
 	#
 	# If scoring wasn't pruned (and as a result, a breakdown was already sent), then don't send another.
-	[[ -z ${capped} ]] && printf 'Points from %s: %s/%s\n' "${readable_name}" "${counter}" "${max}"
+	[[ -z ${capped} ]] && log i "Points from ${readable_name}: ${counter}/${max}"
 	#
 	# Assign score to its own index inside an associative array.
 	score["${link_name}"]="${counter}/${max}"
@@ -88,7 +92,7 @@ combine_scores() {
 		val="${score["${key}"]:-0/0}"
 		local total="$((total + ${val%%/*}))" total_max="$((total_max + ${val##*/}))"
 	done
-	printf '%s: %s/%s\n' "${message}" "${total}" "${total_max}"
+	log i "${message}: ${total}/${total_max}"
 }
 
 
@@ -102,25 +106,25 @@ combine_scores() {
 if [[ -n ${1} && -e ${1} ]]; then
 	mapfile -td '' jars < <(find -- "${1}" -type f -name '*.jar' -print0)
 elif [[ -n ${1} ]]; then
-	echo 'W: Provided path does not exist; falling back to CWD.'
+	log w "${0@Q}: provided path does not exist; falling back to CWD."
 else
 	mapfile -td '' jars < <(find . -type f -name '*.jar' -print0)
 fi
 #
 # Exit if no JARs were found
 if [[ ${#jars[@]} -eq 0 ]]; then
-	echo 'E: No files ending in ".jar" were found.' >&2
+	log e "${0@Q}: no files ending in '.jar' were found." >&2
 	exit 2
 fi
 #
 # Enqueue all JARs for simultanious decompilation.
 for jar in "${jars[@]}"; do
-	printf '%s: Decompiling "%s"...\n' "$(date)" "$(pwd)/${jar}"
+	log i "Decompiling $(pwd)/${jar}..."
 	cfr "${jar}" --outputdir "${decompilation_dir}/$(basename "${jar}" .jar)" --silent true &
 done
-echo 'i: Awaiting decompilation of JARs to finish...'
+log i 'Awaiting decompilation of JARs to finish...'
 wait
-echo 'i: Decompilation of JARs has finished!'
+log i 'Decompilation of JARs has finished!'
 
 
 
@@ -169,5 +173,5 @@ for jar in "${jars[@]}"; do (
 	combine_scores 'Visible potential invasiveness' oshi misc_id uncommon_fsi concerning_fsi concerning_di
 	combine_scores 'Visible potential for destruction' rce jni uncommon_fsi concerning_fsi uncommon_moia concerning_moia
 	combine_scores 'Likelihood of intent masking' common_mor concerning_mor common_moo
-	printf '\n\n\n\n\n'
-) > >(tee "$(mktemp mc-sast-"$(basename "${jar}" .jar)"-XXXXX.txt)"); done
+	printf '\n\n\n'
+) > >(tee "$(mktemp mod-sast-"$(basename "${jar}" .jar)"-XXXXX.txt)"); done
