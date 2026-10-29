@@ -3,8 +3,8 @@
 # Environment Setup
 #
 cd "$(dirname "${0}")" || exit 1
-[[ -d "./lib" ]] || exit 2
-for function in "./lib/"*; do
+[[ -d "./bash-lib" ]] || exit 2
+for function in "./bash-lib/"*; do
 	source "${function}"
 done
 if ! decompilation_dir="$(mktemp -d /tmp/decompilation-XXXXXX)"; then
