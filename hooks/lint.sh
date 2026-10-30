@@ -20,7 +20,7 @@ is_bash_file() {
 	case "${1}" in
 		*.sh|*.bash|*.rc) return 0 ;;
 	esac
-	head -n1 "${1}" 2>/dev/null | grep -qE '^#!.*\bbash\b'
+	head -n 1 "${1}" 2>/dev/null | grep -q -E '^#!.*\bbash\b'
 }
 
 files=()
@@ -49,8 +49,8 @@ done
 tmp="$(mktemp)"
 trap 'rm -rf "${tmp}"' EXIT
 for file in "${files[@]}"; do
-	grep -Pz '(?<!(?<!\n)\n{6})#\n# \w+\n#\n' "${file}"
-	flags="$(grep -Pzc '(?<!(?<!\n)\n{6})#\n# \w+\n#\n' "${file}")"
+	grep -P -z '(?<!(?<!\n)\n{6})#\n# \w+\n#\n' "${file}"
+	flags="$(grep -P -z -c '(?<!(?<!\n)\n{6})#\n# \w+\n#\n' "${file}")"
 	if [[ ${flags} -gt 0 ]] && (( FIX )); then
 		mkdir -p "$(dirname "${tmp}/${file}")"
 		cp -a "${file}" "${tmp}/${file}"
@@ -66,7 +66,7 @@ for file in "${files[@]}"; do
 done
 
 for file in "${files[@]}"; do
-	if matches="$(grep -nE '[[:blank:]]+$' "${file}")"; then
+	if matches="$(grep -n -E '[[:blank:]]+$' "${file}")"; then
 		if ((FIX)); then
 			sed -i 's/[[:blank:]]\+$//' "${file}"
 			git add -- "${file}"
