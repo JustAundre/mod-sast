@@ -104,11 +104,11 @@ combine_scores() {
 #
 # Enumerate all JAR files in passed path (if passed path was passed and exists, else CWD).
 if [[ -n ${1} && -e ${1} ]]; then
-	mapfile -td '' jars < <(find -- "${1}" -type f -name '*.jar' -print0)
+	mapfile -t -d '' jars < <(find -- "${1}" -type f -name '*.jar' -print0)
 elif [[ -n ${1} ]]; then
 	log w "${0@Q}: provided path does not exist; falling back to CWD."
 else
-	mapfile -td '' jars < <(find . -type f -name '*.jar' -print0)
+	mapfile -t -d '' jars < <(find . -type f -name '*.jar' -print0)
 fi
 #
 # Exit if no JARs were found
